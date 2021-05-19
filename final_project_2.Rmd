@@ -1,0 +1,1118 @@
+---
+title: "The Gender Pay Gap"
+author: "Ben Christensen"
+date: "12/16/2020"
+output:
+  pdf_document: default
+  html_document: default
+subtitle: Conducting a Multivariate Analysis of the 2017 National Longitudinal Survey
+  of Youth
+---
+
+```{r global-options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(knitr)
+library(GGally)
+options(scipen = 2)
+options(digits = 2)
+```
+
+```{r, echo=FALSE}
+# Import starting data
+nlsy <- read_csv("nlsy97_Nov2020.csv")
+``` 
+
+```{r, echo = FALSE}
+# Change column names to question name abbreviations (you will want to change these further)
+colnames(nlsy) <- c("GPA",#GPA NUM
+    "INCARC_TOTNUM_XRND", # #of incarcerations NUM
+    "INCARC_AGE_FIRST_XRND", #Age at first incarceration NUM
+    "INCARC_LENGTH_LONGEST_XRND", #length of longest incarceration NUM
+    "PUBID_1997", #Youth case ID code ID
+    "good.teachers", #Are the teachers good at your school? CAT
+    "safe.at.school", #Do you feel safe at school? CAT
+    "YSAQ-010_1997", # #of days a week your fam does something religious NUM
+    "YSAQ-369_1997",# Have you used marijuana? CAT
+    "YEXP-300_1997",# What is the percent chance you expect to get flu next year? NUM
+    "YEXP-1500_1997",# Estimate pct. chance you get high school degree by age 20 NUM
+    "YEXP-1600_1997",# Estimate pct. chance you get incarcerated by age 20 NUM
+    "YEXP-1800_1997",# Estimate pct. chance you become a parent by age 20 NUM
+    "YEXP-2000_1997",# Estimate pct. chance you get college degree by age 30 NUM
+    "sex",# CAT
+    "KEY_BDATE_M_1997",# Birth month CAT
+    "KEY_BDATE_Y_1997",# Birth year NUM
+    "hard.times",# Have you ever lived through hard times? (homeless, no water, ...) CAT
+    "PC8-092_1997",# Spend 20+ hrs. in childcare as a baby? CAT
+    "PC9-002_1997",# Have physical or emotional conditions that limit school/work? CAT
+    "PC12-024_1997",# Depressed? (F) CAT
+    "PC12-028_1997",# Depressed? (M) CAT
+    "CV_AGE_12/31/96_1997",# Age in 1996#### NO
+    "CV_BIO_MOM_AGE_CHILD1_1997",# Age of biological mother at her first birth NUM
+    "CV_BIO_MOM_AGE_YOUTH_1997",# Age of biological mother when you were born NUM
+    "CV_CITIZENSHIP_1997",# Citizen at birth? CAT
+    "CV_ENROLLSTAT_1997",# School enrollment in 1997 CAT
+    "HH.net.worth.1997",# Household net worth NUM
+    "parents",# What is your parental situation? CAT
+    "CV_MSA_AGE_12_1997",# Reside in MSA at age 12? CAT
+    "CV_URBAN-RURAL_AGE_12_1997",# Resided in Rural or Urban at age 12? CAT
+    "CV_SAMPLE_TYPE_1997",# Part of cross-sectional sample or oversample? CAT
+    "bio.dad.degree",# Biological Father's highest degree attained CAT
+    "bio.mom.degree",# Biological Mother's highest degree attained CAT
+    "res.dad.degree",# Resident father's highest degree attained CAT
+    "res.mom.degree",# Resident mother's highest degree attained CAT
+    "race",# CAT
+    "grade.8.grades",# Grades received in 8th grade CAT
+    "YSCH-7300_1998",# Grades received in High School CAT
+    "YSAQ-372B_1998",# Ever used cocaine or high drugs? CAT
+    "YSAQ-371_2000",# How many days have you used marijuana in the last 30 days NUM
+    "YSAQ-282J_2002",# Are you organized or disorganized? NUM 
+    "YSAQ-282Q_2002",# Trustful or distrustful CAT
+    "CV_HH_NET_WORTH_Y_2003",# Household net worth 2003 NUM
+    "CV_BA_CREDITS.01_2004",# Fraction of credits earned toward Bachelor's as of 2004 NUM
+    "YSAQ-000B_2004",# Weight 2004 NUM
+    "YSAQ-373_2004",# Weight description CAT
+    "YSAQ-369_2005",# Ever used marijuana? 2005 CAT
+    "bio.children.2007",# How many children of yours live with you? 2007 NUM *
+    "agreeable.1",# Should people help less fortunate? CAT (NUM?) 
+    "agreeable.2",# Should people take care of themselves? CAT (NUM?) (02)
+    "agreeable.3",# Helping people is important to me CAT (NUM?) (03)
+    "agreeable.4",# People should not worry about others CAT (NUM?) (04)
+    "bio.children.2009",# How many children of yours live with you? 2009 NUM *
+    "CV_COLLEGE_TYPE.01_2011",# Attend public or private college? CAT
+    "CV_INCOME_FAMILY_2011",# Gross family income 2011 NUM *
+    "CV_HH_SIZE_2011",# Household size 2011 NUM *
+    "CV_HH_UNDER_18_2011",# Number of children in household 2011 NUM *
+    "CV_HH_UNDER_6_2011",# Number of young children in HH 2011 NUM *
+    "highest.degree",# Highest degree earned 2011 CAT *
+    "bio.children.2011",# Num biological children in HH 2011 NUM *
+    "highest.grade",# Highest grade completed 2011 CAT (NUM?)
+    "height.feet",# Height (ft.) 2011 NUM
+    "height.inches",# Height (in.) 2011 NUM
+    "YSAQ-000B_2011",# Weight (lb.) 2011 NUM
+    "YSAQ-360C_2011",# Have you smoked since last interview? 2011 CAT
+    "YSAQ-364D_2011",# Have you drunk since last interview? 2011 CAT
+    "YSAQ-371_2011",# How many days have you used marijuana in the last 30 days? 2011 NUM
+    "YSAQ-372CC_2011",# Have you used cocaine/hard drugs since last interview? 2011 CAT
+    "YSAQ-373_2011",# Weight description CAT
+    "YSAQ-374_2011",# Trying to lose/gain/maintain weight? CAT
+    "YEMP_INDCODE-2002.01_2011",# Employment industry 2011 CAT *
+    "bio.children.2015",# Num biological children in HH 2015 NUM *
+    "YEMP_INDCODE-2002.01_2017",# Employment industry 2017 CAT *
+    "occupation",# Occupation/job code 2017 CAT *
+    "marriage.status",# Marriage status CAT *
+    "income.yn",# Did you receive income last year? CAT 
+    "income",# dependent variable
+    "income.estimate",# Last year's wages NUM
+    "spouse.income.yn",# Did your spouse receive income last year? CAT *
+    "spouse.income",# Spouse's income last year NUM *
+    "spouse.income.estimate",# Discretized spouse income last year CAT *
+    "CVC_YTH_REL_HH_AGE6_YCHR_XRND",# Relationship to parents at age 6 CAT
+    "math.SAT",# Highest SAT Math score 2007 NUM *
+    "verbal.SAT",# Highest SAT Verbal Score 2007 NUM *
+    "ACT",# Highest ACT score 2007 NUM *
+    "CVC_HH_NET_WORTH_20_XRND",# Net worth of HH at age 20 CAT *
+    "CVC_HH_NET_WORTH_25_XRND",# Net worth of HH at age 25 CAT *
+    "CVC_ASSETS_FINANCIAL_25_XRND",# Financial assets at age 25 NUM
+    "CVC_ASSETS_DEBTS_20_XRND",# Debt at age 20 NUM
+    "CVC_HH_NET_WORTH_30_XRND",# Net worth of HH at age 30 NUM
+    "CVC_HOUSE_VALUE_30_XRND",# House value at age 30 NUM
+    "CVC_HOUSE_TYPE_30_XRND",# House type at age 30 CAT
+    "CVC_ASSETS_FINANCIAL_30_XRND",# Financial assets at age 30 NUM
+    "CVC_ASSETS_DEBTS_30_XRND")# Debt at age 30 NUM
+
+#
+nlsy['height'] <- (1/12) * nlsy["height.inches"] + nlsy["height.feet"]
+```
+
+The average wages of men and women in the National Longitudinal Survey of Youth (NLSY) differ significantly. One explanation is gender discrimination. Here are other possible explanations:
+
+- Women may be more likely to stay home with children, losing work experience and forgoing pay
+
+- Women may be less likely to request a pay raise due to psychological differences
+
+- Women may be more likely to choose occupations that have lower incomes
+
+- Average height differences between men and women may influence the difference in incomes because tall people could be more likely to be promoted
+
+
+## Data processing and summarization
+
+### Gender and Income
+
+##### Income
+The dependent variable is income. Those who did not receive income from a job are given a value of -4 (Valid Skip) for the dependent variable. For this reason, I replace Income with 0 for every person who did not receive an income in the previous year. This decision is further discussed in the final discussion portion of the paper.
+
+Other people are unsure of the exact income they earned. These were asked to estimate which category of income they fell in:
+
+1. \$1 - $5,000
+2. \$5,001 - $10,000
+3. \$10,001 - $25,000
+4. \$25,001 - $50,000
+5. \$50,001 - $100,000
+6. \$100,001 - $250,000
+7. More than $250,000
+
+
+```{r}
+#Clean income variable
+nlsy[nlsy$income.yn == 0, 'income'] <- 0
+nlsy[nlsy$income < 0 & nlsy$income.estimate == 1,]$income  <- 2500
+nlsy[nlsy$income < 0 & nlsy$income.estimate == 2,]$income  <- 7500
+nlsy[nlsy$income < 0 & nlsy$income.estimate == 3,]$income  <- 17500
+nlsy[nlsy$income < 0 & nlsy$income.estimate == 4,]$income  <- 37500
+nlsy[nlsy$income < 0 & nlsy$income.estimate == 5,]$income  <- 75000
+nlsy[nlsy$income < 0 & nlsy$income.estimate > 5,]$income  <- 235884
+nlsy[nlsy$income < 0,]$income <- NA
+nlsy <- nlsy[!is.na(nlsy$income),]
+```
+
+I use the median income for each category as the income estimate and replace missing incomes with this estimate when possible. The income variable is top-coded at \$149,000. Anyone with a higher value than the top code is assigned the average income of everyone above the top-code: \$`r max(nlsy$income)`. For those in the 6th and 7th categories of estimated income, the median is greater than \$`r max(nlsy$income)`. So I set these to \$`r max(nlsy$income)` to match the other observations that surpassed the top-code. Those remaining with a negative value for income are assigned an income of NA and removed from the data set. That leaves `r nrow(nlsy)` observations in the data.
+
+##### Gender
+
+Every person in the data set has a value for sex, either 1 for Male or 2 for Female. I recode the variable so each observation is 'Male' or 'Female' instead of 1 or 2.
+```{r}
+nlsy <- mutate(nlsy, 
+               sex = recode_factor(sex, 
+                                      `2` = "Female",
+                                      `1` = "Male"))
+
+ttest <- t.test(income ~ sex, data=nlsy)
+```
+The key question in this analysis is how income varies across sex. Using a t-test, the gender pay gap in the data is \$`r formatC(ttest$estimate[2] - ttest$estimate[1], digits = 7)` (favoring men) with a 95% confidence interval of (\$`r -ttest$conf.int[2]` to \$`r -ttest$conf.int[1]`).
+
+
+```{r}
+#Show gender wage gap among data
+wage.gap <- nlsy %>% group_by(sex) %>% summarize(average.income = mean(income, na.rm = TRUE),
+                                           count = n())
+kable(wage.gap)
+```
+The following density plot shows the distribution of income by sex. The mean income for each sex is shown by a vertical line. Both distributions are skewed right with higher average income for men than women. Nearly twice as many women have near-zero incomes. About twice as many men have top-coded incomes. For almost every income level above women's average income, more men than women earn at that level.
+```{r}
+#Plot income distributions by gender
+#ggplot(data = nlsy, aes(x = income)) + geom_histogram(fill = 'Steel Blue') + facet_grid(. ~ sex)
+
+#ggplot(data = nlsy, aes(x = income, y = sex)) + geom_violin(fill = 'Steel Blue')
+nlsy[nlsy$sex == 'Male', 'mean'] <- wage.gap$average.income[2]
+nlsy[nlsy$sex == 'Female', 'mean'] <- wage.gap$average.income[1]
+ggplot(data = nlsy, aes(x = income, fill = sex, alpha = 0.5)) + 
+        geom_density() + guides(alpha = 'none') + ggtitle("Distribution of Income by Sex") +
+        geom_vline(data = nlsy, aes(xintercept = mean, color = sex), size=1.0)
+```
+
+### Other Variables
+
+I renamed variables to more meaningful names as follows:
+
+YINC-1700_2017 -> income
+
+KEY!SEX -> sex 
+
+PSTRAN_GPA.01_PSTR -> GPA
+
+CV_BIO_CHILD_HH_2007 -> bio.children.2007
+
+CV_BIO_CHILD_HH_2009 -> bio.children.2009
+
+CV_BIO_CHILD_HH_2011 -> bio.children.2011
+
+CV_BIO_CHILD_HH_2015 -> bio.children.2015
+
+CV_HH_NET_WORTH_P_1997 -> HH.net.worth.1997 
+
+CV_HGC_BIO_DAD_1997-> bio.dad.degree
+
+CV_HGC_BIO_MOM_1997 -> bio.mom.degree 
+
+CV_HGC_RES_DAD_1997 -> res.dad.degree
+
+CV_HGC_RES_MOM_1997 -> res.mom.degree
+
+CVC_SAT_MATH_SCORE_2007_XRND -> math.SAT 
+
+CVC_SAT_VERBAL_SCORE_2007_XRND -> verbal.SAT 
+
+CV_HIGHEST_DEGREE_1112_2011 -> highest.degree 
+
+CV_YTH_REL_HH_CURRENT_1997 -> parents 
+
+CV_MARSTAT_COLLAPSED_2017 -> marriage.status 
+
+YEMP_OCCODE-2002.01_2017 -> occupation
+
+YTEL-52~000001_2007 -> agreeable.1
+
+YTEL-52~000002_2007 -> agreeable.2
+
+YTEL-52~000003_2007 -> agreeable.3
+
+YTEL-52~000004_2007 -> agreeable.4
+
+YSAQ-000A000001_2011 -> height.feet
+
+YSAQ-000A000002_2011 -> height.inches
+
+Detailed information about these variables is shown in the next section.
+
+
+## Methodology
+### Variable Exploration
+We need to find variables that could plausibly cause income variation and that are highly correlated with gender in the data set. This will enable a discussion on whether other characteristics cause the income variation across gender. Then we can see if controlling for these variables changes the effect gender has on income. 
+```{r}
+cat_vars <- c("good.teachers", #Are the teachers good at your school? CAT ***
+    "safe.at.school", #Do you feel safe at school? CAT ***
+        "YSAQ-369_1997",# Have you used marijuana? CAT
+    "sex",# CAT ***
+    "KEY_BDATE_M_1997",# Birth month CAT
+    "hard.times",# Have you ever lived through hard times? (homeless, no water, ...) CAT ***
+    "PC8-092_1997",# Spend 20+ hrs. in childcare as a baby? CAT
+    "PC9-002_1997",# Have physical or emotional conditions that limit school/work? CAT
+    "PC12-024_1997",# Depressed? (F) CAT
+    "PC12-028_1997",# Depressed? (M) CAT
+    "CV_CITIZENSHIP_1997",# Citizen at birth? CAT
+    "CV_ENROLLSTAT_1997",# School enrollment in 1997 CAT
+    "parents",# What is your parental situation? CAT ***
+    "CV_MSA_AGE_12_1997",# Reside in MSA at age 12? CAT
+    "CV_URBAN-RURAL_AGE_12_1997",# Resided in Rural or Urban at age 12? CAT
+    "CV_SAMPLE_TYPE_1997",# Part of cross-sectional sample or oversample? CAT ***
+    "bio.dad.degree",# Biological Father's highest degree attained CAT ***
+    "bio.mom.degree",# Biological Mother's highest degree attained CAT ***
+    "res.dad.degree",# Resident father's highest degree attained CAT ***
+    "res.mom.degree",# Resident mother's highest degree attained CAT ***
+    "race",# CAT ***
+    "grade.8.grades",# Grades received in 8th grade CAT ***
+    "YSCH-7300_1998",# Grades received in High School CAT
+    "YSAQ-372B_1998",# Ever used cocaine or high drugs? CAT
+    "YSAQ-282Q_2002",# Trustful or distrustful CAT
+    "YSAQ-373_2004",# Weight description CAT
+    "YSAQ-369_2005",# Ever used marijuana? 2005 CAT
+    "agreeable.1",# Should people help less fortunate? CAT (NUM?) 
+    "agreeable.2",# Should people take care of themselves? CAT (NUM?)
+    "agreeable.3",# Helping people is important to me CAT (NUM?)
+    "agreeable.4",# People should not worry about others CAT (NUM?)
+    "CV_COLLEGE_TYPE.01_2011",# Attend public or private college? CAT
+    "highest.degree",# Highest degree earned 2011 CAT *
+    "highest.grade",# Highest grade completed 2011 CAT (NUM?)
+    "YSAQ-360C_2011",# Have you smoked since last interview? 2011 CAT
+    "YSAQ-364D_2011",# Have you drunk since last interview? 2011 CAT
+    "YSAQ-372CC_2011",# Have you used cocaine/hard drugs since last interview? 2011 CAT
+    "YSAQ-373_2011",# Weight description CAT
+    "YSAQ-374_2011",# Trying to lose/gain/maintain weight? CAT
+    "YEMP_INDCODE-2002.01_2011",# Employment industry 2011 CAT *
+    "YEMP_INDCODE-2002.01_2017",# Employment industry 2017 CAT *
+    "occupation",# Occupation/job code 2017 CAT *
+    "marriage.status",# Marriage status CAT ***
+    "income.yn",# Did you receive income last year? CAT *
+    "spouse.income.yn",# Did your spouse receive income last year? CAT *
+    "spouse.income.estimate",# Discretized spouse income last year CAT *
+    "CVC_YTH_REL_HH_AGE6_YCHR_XRND",# Relationship to parents at age 6 CAT
+    "CVC_HH_NET_WORTH_20_XRND",# Net worth of HH at age 20 CAT *
+    "CVC_HH_NET_WORTH_25_XRND",# Net worth of HH at age 25 CAT *
+    "CVC_HOUSE_TYPE_30_XRND",# House type at age 30 CAT
+    "math.SAT",# Highest SAT Math score 2007 NUM *
+    "verbal.SAT"# Highest SAT Verbal Score 2007 NUM *    
+    )
+num_vars <- c("GPA",#GPA NUM
+    "INCARC_TOTNUM_XRND", # #of incarcerations NUM
+    "INCARC_AGE_FIRST_XRND", #Age at first incarceration NUM
+    "INCARC_LENGTH_LONGEST_XRND", #length of longest incarceration NUM
+    "YSAQ-010_1997", # #of days a week your fam does something religious NUM
+    "YEXP-300_1997",# What is the percent chance you expect to get flu next year? NUM
+    "YEXP-1500_1997",# Estimate pct. chance you get high school degree by age 20 NUM
+    "YEXP-1600_1997",# Estimate pct. chance you get incarcerated by age 20 NUM
+    "YEXP-1800_1997",# Estimate pct. chance you become a parent by age 20 NUM
+    "YEXP-2000_1997",# Estimate pct. chance you get college degree by age 30 NUM
+    "KEY_BDATE_Y_1997",# Birth year NUM
+    "CV_AGE_12/31/96_1997",# Age in 1996#### NO
+    "CV_BIO_MOM_AGE_CHILD1_1997",# Age of biological mother at her first birth NUM
+    "CV_BIO_MOM_AGE_YOUTH_1997",# Age of biological mother when you were born NUM
+    "HH.net.worth.1997",# Household net worth NUM
+    "YSAQ-371_2000",# How many days have you used marijuana in the last 30 days NUM
+    "YSAQ-282J_2002",# Are you organized or disorganized? NUM 
+    "CV_HH_NET_WORTH_Y_2003",# Household net worth 2003 NUM
+    "CV_BA_CREDITS.01_2004",# Fraction of credits earned toward Bachelor's as of 2004 NUM
+    "YSAQ-000B_2004",# Weight 2004 NUM
+    "bio.children.2007",# How many children of yours live with you? 2007 NUM *
+    "agreeable.1",# Should people help less fortunate? CAT (NUM?) 
+    "agreeable.2",# Should people take care of themselves? CAT (NUM?)
+    "agreeable.3",# Helping people is important to me CAT (NUM?)
+    "agreeable.4",# People should not worry about others CAT (NUM?)
+    "bio.children.2009",# How many children of yours live with you? 2009 NUM *
+    "CV_INCOME_FAMILY_2011",# Gross family income 2011 NUM *
+    "CV_HH_SIZE_2011",# Household size 2011 NUM *
+    "CV_HH_UNDER_18_2011",# Number of children in household 2011 NUM *
+    "CV_HH_UNDER_6_2011",# Number of young children in HH 2011 NUM *
+    "bio.children.2011",# Num biological children in HH 2011 NUM *
+    "highest.grade",# Highest grade completed 2011 CAT (NUM?)
+    "height.feet",# Height (ft.) 2011 NUM
+    "height.inches",# Height (in.) 2011 NUM
+    "YSAQ-000B_2011",# Weight (lb.) 2011 NUM
+    "YSAQ-371_2011",# How many days have you used marijuana in the last 30 days? 2011 NUM
+    "bio.children.2015",# Num biological children in HH 2015 NUM *
+    "income.estimate",# Last year's wages NUM
+    "spouse.income",# Spouse's income last year NUM ***
+    "ACT",# Highest ACT score 2007 NUM *
+    "CVC_ASSETS_FINANCIAL_25_XRND",# Financial assets at age 25 NUM
+    "CVC_ASSETS_DEBTS_20_XRND",# Debt at age 20 NUM
+    "CVC_HH_NET_WORTH_30_XRND",# Net worth of HH at age 30 NUM
+    "CVC_HOUSE_VALUE_30_XRND",# House value at age 30 NUM
+    "CVC_ASSETS_FINANCIAL_30_XRND",# Financial assets at age 30 NUM ?
+    "CVC_ASSETS_DEBTS_30_XRND",# Debt at age 30 NUM
+    "bio.dad.degree",# Biological Father's highest degree attained CAT ***
+    "bio.mom.degree",# Biological Mother's highest degree attained CAT ***
+    "res.dad.degree",# Resident father's highest degree attained CAT ***
+    "res.mom.degree",# Resident mother's highest degree attained CAT ***
+    "height")
+```
+#### Numeric Variables
+```{r}
+#To find highly correlated variables
+correlations <- c()
+for (var in num_vars){
+  temp.df <- nlsy[!is.na(nlsy[[var]]) & !is.na(nlsy$income), ]
+  correlations[var] <- abs(cor(temp.df[,var], temp.df$income))
+}
+correlations <- sort(correlations, decreasing = TRUE)
+
+#For use in pairs plots
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
+{
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- abs(cor(x, y, 'complete.obs'))
+    txt <- format(c(r, 0.123456789), digits = digits)[1]
+    txt <- paste0(prefix, txt)
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt, cex = pmax(1, cex.cor * r))
+}
+```
+The following are numeric variables that correlate highly with income -- for which we may find causal relationships plausible (correlations shown in parentheses): 
+
+- GPA (`r round(correlations['GPA'][[1]], 2)`)
+
+- Number of biological children (`r round(correlations['bio.children.2007'][[1]], 2)`)
+
+- Household net worth in 1997 (`r round(correlations['HH.net.worth.1997'][[1]], 2)`)
+
+- Parent's degree (`r round(correlations['bio.dad.degree'][[1]], 2)`)
+
+The following numeric variable has a low correlation but may still be of interest:
+
+- Height (`r round(correlations['height'][[1]], 2)`)
+
+##### GPA
+The GPA variable has two implied decimal places, so a 2.75 GPA is written as '275'. For this reason, I divide the variable by 100. Those with a GPA higher than 4.0 were assigned a value of -3, so I replace the -3 with 4.00. `r sum(nlsy$sex == 'Female' & nlsy$GPA == -3)` of these observations were Female and `r sum(nlsy$sex == 'Male' & nlsy$GPA == -3)` were Male. Other negative values are reassigned as NA.
+
+```{r}
+nlsy[nlsy$GPA == -3, 'GPA'] <- 400
+nlsy[nlsy$GPA < 0, 'GPA'] <- NA
+nlsy$GPA <- nlsy$GPA / 100
+
+```
+
+There are `r sum(!is.na(nlsy$GPA))` non-missing observations for GPA.
+
+```{r}
+ggplot(data = nlsy, aes(x = GPA, fill = sex, alpha = 0.5)) + 
+        geom_density() + guides(alpha = 'none') + ggtitle("Distribution of GPA by Sex")
+```
+
+##### Number of Children
+
+There are four variables that measure the number of biological children the respondent has in the household. These measure the same thing but were recorded at different times: 2007, 2009, 2011, and 2015. Those without any biological children are coded as -4, meaning those with a value of 0 have children, just not living with them. For our purposes, these two cases can be treated the same. It is plausible that each would have more time for a full-time job than respondents that have children living with them. So I recode each -4 to a 0. Other negative values are re-coded to NA.
+
+```{r}
+nlsy[nlsy$bio.children.2007 == -4, "bio.children.2007"] <- 0
+nlsy[nlsy$bio.children.2007 < 0, "bio.children.2007"] <- NA
+nlsy[nlsy$bio.children.2009 == -4, "bio.children.2009"] <- 0
+nlsy[nlsy$bio.children.2009 < 0, "bio.children.2009"] <- NA
+nlsy[nlsy$bio.children.2011 == -4, "bio.children.2011"] <- 0
+nlsy[nlsy$bio.children.2011 < 0, "bio.children.2011"] <- NA
+nlsy[nlsy$bio.children.2015 == -4, "bio.children.2015"] <- 0
+nlsy[nlsy$bio.children.2015 < 0, "bio.children.2015"] <- NA
+```
+
+There are `r sum(!is.na(nlsy$bio.children.2007))`, `r sum(!is.na(nlsy$bio.children.2009))`, `r sum(!is.na(nlsy$bio.children.2011))`, and `r sum(!is.na(nlsy$bio.children.2015))` non-missing observations for biological children for 2007, 2009, 2011, and 2015, respectively.
+
+Now, for variable choice I've constructed a pairs plot to show the correlation between each variable and income. 
+
+The variables are highly correlated, with the 2007 measure most correlated with income. For that reason, I use bio.children.2007 and exclude the others from analysis.
+
+```{r}
+compare_vars <- c("income", "bio.children.2007", "bio.children.2009", "bio.children.2011", "bio.children.2015")
+pairs(nlsy[, compare_vars], lower.panel = panel.cor)
+```
+
+
+The following graph shows that a larger percent of men than women in the data set have 0 children, suggesting this variable is a good candidate for linear regression.
+
+```{r}
+ggplot(data = nlsy, aes(x = bio.children.2007, y = stat(count)/sum(stat(count)), fill = sex, alpha = 0.5)) + 
+        geom_histogram(bins = 10, position='identity', stat="count") + guides(alpha = 'none') + ggtitle("Distribution of Number of Children by Sex") + scale_y_continuous(labels = scales::percent) + ylab("Percent")
+```
+
+##### Household Net Worth 1997
+This variable is top-coded at \$600,000. `r sum(nlsy$HH.net.worth.1997 == -3 | nlsy$HH.net.worth.1997 == -4)` have skip-codes of -3 or -4. I recode valid skips of -4 to Household net worth of 0. The other skip-code is re-labeled as NA.
+
+```{r}
+nlsy[nlsy$HH.net.worth.1997 == -4, 'HH.net.worth.1997'] <- 0
+nlsy[nlsy$HH.net.worth.1997 < 0, 'HH.net.worth.1997'] <- NA
+```
+There are `r sum(!is.na(nlsy$HH.net.worth.1997))` non-missing observations for this variable.
+
+The following graph shows the distribution of Househould net worth in 1997 by gender. Other than a larger percent of women growing up in low-net worth households, the variation across gender is minimal. However, I would still like to see if this variable has some effect on income when included in linear regression as an interactive variable with gender.
+
+```{r}
+ggplot(data = nlsy, aes(x = HH.net.worth.1997, fill = sex, alpha = 0.5)) + 
+        geom_density() + guides(alpha = 'none') + ggtitle("Distribution of Household Net Worth by Sex")
+```
+
+##### Parents' Education Levels
+There are four variables that measure a respondent's parents' education levels. They ask the same question, but they ask it of the biological father and mother and the residential father and mother. I mark valid skips, invalid skips, and 'UNGRADED' as NA. The valid skip entry for residential father or mother means that parent is not present in the household which may be important information, but this is at least partially captured by the parents variable. These variables take on a finite number of values, but each step represents one additional year of education, so I include it as a numerical variable.
+
+0. NONE
+1. 1ST GRADE
+2. 2ND GRADE
+3. 3RD GRADE
+4. 4TH GRADE
+5. 5TH GRADE
+6. 6TH GRADE
+7. 7TH GRADE
+8. 8TH GRADE
+9. 9TH GRADE
+10. 10TH GRADE
+11. 11TH GRADE
+12. 12TH GRADE
+13. 1ST YEAR COLLEGE
+14. 2ND YEAR COLLEGE
+15. 3RD YEAR COLLEGE
+16. 4TH YEAR COLLEGE
+17. 5TH YEAR COLLEGE
+18. 6TH YEAR COLLEGE
+19. 7TH YEAR COLLEGE
+20. 8TH YEAR COLLEGE OR MORE
+
+```{r}
+nlsy[nlsy$bio.dad.degree < 0 | nlsy$bio.dad.degree == 95, 'bio.dad.degree'] <- NA
+nlsy[nlsy$bio.mom.degree < 0 | nlsy$bio.mom.degree == 95, 'bio.mom.degree'] <- NA
+nlsy[nlsy$res.dad.degree < 0 | nlsy$res.dad.degree == 95, 'res.dad.degree'] <- NA
+nlsy[nlsy$res.mom.degree < 0 | nlsy$res.mom.degree == 95, 'res.mom.degree'] <- NA
+```
+There are `r sum(!is.na(nlsy$bio.dad.degree))` non-missing observations for each of these variables.
+
+For variable choice I've constructed a pairs plot to show the correlation between the variables. The biological and residential versions of each are highly correlated. Even the correlations across father and mother's degrees are high. I'll include only the bio.mom.degree variable because it is most correlated with income. 
+```{r}
+compare_vars <- c("income", "bio.dad.degree", "res.dad.degree", "bio.mom.degree", "res.mom.degree")
+pairs(nlsy[, compare_vars], lower.panel = panel.cor)
+```
+
+##### Height
+The height variable is split into two variables: height in feet and additional height in inches. Meaning a respondent that is 5'3" would answer the 5 for the first question and 3 for the second. I combine the variables to get the full height and convert it to feet. `r sum(nlsy$height.feet < 0 & nlsy$height.inches < 0)` of the `r sum(nlsy$height.inches < 0)` respondents who did not give a response for the inches question also did not give a response for the feet question. I mark them all as NA.
+
+```{r}
+nlsy[nlsy$height < 0, 'height'] <- NA
+```
+There are `r sum(!is.na(nlsy$height))` non-missing observations for height.
+
+The following plot shows men in the data set are taller than women which makes this a good candidate for linear regression.
+
+```{r}
+ggplot(data = nlsy, aes(x = height, fill = sex, alpha = 0.5)) + 
+        geom_density() + guides(alpha = 'none') + ggtitle("Distribution of Height by Sex")
+```
+
+#### Categorical Variables
+```{r}
+p.values <- c()
+for (var in cat_vars){
+  p.val <- summary(aov(nlsy[["income"]] ~ nlsy[[var]]))[[1]][["Pr(>F)"]][[1]]
+  if (!is.null(p.val)) {
+    p.values[var] <- p.val
+  }
+}
+p.values <- sort(p.values)
+```
+
+The following are categorical variables that are statistically significant predictors of income for which we may find causal relationships plausible (analysis of variance P-values shown in parentheses):
+
+- Math SAT score (`r formatC(p.values['math.SAT'][[1]], digits = 3)`)
+
+- Verbal SAT score (`r formatC(p.values['verbal.SAT'][[1]], digits = 3)`)
+
+- Highest Degree earned (as of 2011) (`r  formatC(p.values['highest.degree'][[1]], digits = 3)`)
+
+- Parent Makeup (`r formatC(p.values['parents'][[1]], digits = 3)`)
+
+- Marriage Status (`r formatC(p.values['marriage.status'][[1]], digits = 3)`)
+
+- Occupation (`r formatC(p.values['occupation'][[1]], digits = 3)`)
+
+The following variable has a lower p-value, but may be of interest:
+
+- Proxy for agreeableness (`r round(p.values['agreeable.4'], 2)`)
+
+##### SAT Scores
+The Math and Verbal SAT scores are grouped into 6 categories:
+
+1. 200 - 300
+2. 301 - 400
+3. 401 - 500
+4. 501 - 600
+5. 601 - 700
+6. 701 - 800
+
+Those with invalid skip for the question were assigned -3 and those with a valid skip for the question were assigned -4. Both of these values may be interesting. A respondent who did not take the SAT (valid skip) may not intend to attend college (or they took a different exam). Those with an invalid skip may have refused to answer the question because their score was low. For these possibilites, I leave those codes in the data set instead of setting them to NA. 
+
+For math SAT scores, `r sum(nlsy$math.SAT > 0)` respondents gave a valid response, `r sum(nlsy$math.SAT == -3)` were an invalid skip, `r sum(nlsy$math.SAT == -4)` and were a valid skip.
+
+For verbal SAT scores, `r sum(nlsy$verbal.SAT > 0)` respondents gave a valid response, `r sum(nlsy$verbal.SAT == -3)` were an invalid skip, `r sum(nlsy$verbal.SAT == -4)` and were a valid skip.
+
+The number of valid responses are each larger than the `r sum(nlsy$ACT > 0)` available for ACT scores.
+
+I recode the variables to string representations of the categories.
+
+```{r}
+nlsy <- mutate(nlsy, 
+               math.SAT = recode_factor(math.SAT, 
+                                      `-3` = "Invalid Skip",
+                                      `-4` = "Valid Skip",
+                                      `1` = "200 - 300",
+                                      `2` = "301 - 400",
+                                      `3` = "401 - 500",
+                                      `4` = "501 - 600",
+                                      `5` = "601 - 700",
+                                      `6` = "701 - 800"))
+nlsy <- mutate(nlsy, 
+               verbal.SAT = recode_factor(verbal.SAT, 
+                                      `-3` = "Invalid Skip",
+                                      `-4` = "Valid Skip",
+                                      `1` = "200 - 300",
+                                      `2` = "301 - 400",
+                                      `3` = "401 - 500",
+                                      `4` = "501 - 600",
+                                      `5` = "601 - 700",
+                                      `6` = "701 - 800"))
+
+
+```
+
+
+In the following two graphs we see that Math SAT scores seem to have a little more consistent gender variation than Verbal SAT scores. For this reason, I only include Math SAT scores in my final analysis.
+```{r}
+ggplot(data = nlsy, aes(x = math.SAT, y = stat(count)/sum(stat(count)), fill = sex, alpha = 0.5)) + 
+        geom_histogram(bins = 10, position='identity', stat="count") + guides(alpha = 'none') + ggtitle("Distribution of Math SAT Scores by Sex") + scale_y_continuous(labels = scales::percent) + ylab("Percent")
+```
+
+
+```{r}
+ggplot(data = nlsy, aes(x = verbal.SAT, y = stat(count)/sum(stat(count)), fill = sex, alpha = 0.5)) + 
+        geom_histogram(bins = 10, position='identity', stat="count") + guides(alpha = 'none') + ggtitle("Distribution of Verbal SAT Scores by Sex") + scale_y_continuous(labels = scales::percent) + ylab("Percent")
+```
+
+
+##### Highest Degree earned (as of 2011)
+
+This variable categorizes 'degree earned' as follows:
+
+0. None
+1. GED
+2. High school diploma (Regular 12 year program)
+3. Associate/Junior college (AA)
+4. Bachelor's degree (BA, BS)
+5. Master's degree (MA, MS)
+6. PhD
+7. Professional degree (DDS, JD, MD)
+
+`r sum(nlsy$highest.degree == -3)` respondents were invalid skip. This does not seem large enough to justify leaving it as its own category in the data so I mark invalid skips as NA along with the `r sum(nlsy$highest.degree == -3)` respondents that were not interviewed. I recode the rest to string values that represent their categories.
+
+```{r}
+nlsy[nlsy$highest.degree < 0, 'highest.degree'] <- NA
+nlsy <- mutate(nlsy, 
+               highest.degree = recode_factor(highest.degree, 
+                                      `0` = "None",
+                                      `1` = "GED",
+                                      `2` = "High School",
+                                      `3` = "Associate's",
+                                      `4` = "Bachelor's",
+                                      `5` = "Master's",
+                                      `6` = "PhD",
+                                      `7` = "Professional"))
+```
+
+```{r}
+ggplot(data = nlsy, aes(x = highest.degree, y = stat(count)/sum(stat(count)), fill = sex, alpha = 0.5)) + 
+        geom_histogram(bins = 10, position='identity', stat="count") + guides(alpha = 'none') + ggtitle("Distribution of Highest Degree Attained by Sex") + scale_y_continuous(labels = scales::percent) + ylab("Percent")
+```
+
+##### Parent Makeup
+This variable shows the relationship respondents had to the parent figures or guardians of their household in 1997. It has only `r sum(nlsy$parents==-3)` invalid skips and no other skips. These I code as NA. The other observations are grouped by the following categories. I recode the variable to string representations of the categories.
+
+1. Both biological parents
+2. Two parents, biological mother
+3. Two parents, biological father
+4. Biological mother only
+5. Biological father only
+6. Adoptive parent(s)
+7. Foster parent(s)
+8. No parents, grandparents
+9. No parents, other relatives
+10. Anything else
+
+The following graph shows variation in the gender wage gap by parent makeup. Lower and upper bounds on the 95% confidence interval of this two-variable t-test are shown as black lines. Only a few groups have statistically different gender wage gaps: it is larger for individuals with both biological parents than those with only a biological mother and larger than those raised by parents other than relatives. This differences make it a good candidate for linear regression.
+
+```{r}
+nlsy[nlsy$parents < 0, 'parents'] <- NA
+nlsy <- mutate(nlsy, 
+               parents = recode_factor(parents,
+                                      `1` = "Both biological parents",
+                                      `2` = "Two parents, bio. mother",
+                                      `3` = "Two parents, bio. father",
+                                      `4` = "Biological mother only",
+                                      `5` = "Biological father only",
+                                      `6` = "Adoptive parent(s)",
+                                      `7` = "Foster parent(s)",
+                                      `8` = "No parents, grandparents",
+                                      `9` = "No parents, other relatives",
+                                      `10` = "Anything else"))
+```
+
+
+
+```{r}
+gap.data <- nlsy %>% group_by(parents) %>%
+           summarize(income.gap = t.test(income ~ sex)$estimate[[2]] - t.test(income ~ sex)$estimate[[1]],
+                     lower = -1 * t.test(income ~ sex)$conf.int[[2]],
+                     upper = -1 * t.test(income ~ sex)$conf.int[[1]])
+
+ggplot(data = gap.data, aes(y = parents, x = income.gap)) + geom_bar(stat = 'identity', fill = 'steel blue') +
+          ggtitle("Gender Income Gap by Parent Situation") +
+          geom_errorbar(aes(xmax = upper, xmin = lower), width = .1, size = 1)
+
+```
+
+
+
+##### Marriage Status
+This variable records the marital status of the respondent as follows. Only `r sum(nlsy$marriage.status == -3)` are invalid skips, and `r sum(nlsy$marriage.status == -5)` were not interviewed. I code all of these as NA. Then I recode the variable to string representations of the categories.
+
+0. Never-married
+1. Married
+2. Separated
+3. Divorced
+4. Widowed
+
+```{r}
+nlsy[nlsy$marriage.status < 0, 'marriage.status'] <- NA
+nlsy <- mutate(nlsy, 
+               marriage.status = recode_factor(marriage.status,
+                                      `0` = "Never-married",
+                                      `1` = "Married",
+                                      `2` = "Separated",
+                                      `3` = "Divorced",
+                                      `4` = "Widowed"))
+```
+
+There is some variation in marriage status distribution by gender, but the variation in wage gap by marital status is stronger evidence that this variable is a good candidate for linear regression. The error bars are very tight around the estimates for the gender wage gaps of married and never-married people. 
+
+```{r}
+ggplot(data = nlsy, aes(x = marriage.status, y = stat(count)/sum(stat(count)), fill = sex, alpha = 0.5)) + 
+        geom_histogram(bins = 10, position='identity', stat="count") + guides(alpha = 'none') + ggtitle("Distribution of Marriage Status by Sex") + scale_y_continuous(labels = scales::percent) + ylab("Percent")
+```
+
+```{r}
+gap.data <- nlsy %>% group_by(marriage.status) %>%
+           summarize(income.gap = t.test(income ~ sex)$estimate[[2]] - t.test(income ~ sex)$estimate[[1]],
+                     lower = -1 * t.test(income ~ sex)$conf.int[[2]],
+                     upper = -1 * t.test(income ~ sex)$conf.int[[1]])
+ggplot(data = gap.data, aes(x = marriage.status, y = income.gap)) + geom_bar(stat = 'identity', fill = 'steel blue') +
+          ggtitle("Gender Income Gap by Marriage Status ") +
+          geom_errorbar(aes(ymax = upper, ymin = lower), width = .1, size = 1)
+
+```
+
+
+##### Occupation
+There are 2002 Census Occupation Codes. They fall into the following categories. To these I add a category "NONE" for those that were a Valid Skip (-4). These eventually get re-coded to "OTHER" as explained further on. Respondents with any other negative value were re-assigned NA. I replace each code with the name of the category to which it belongs.
+
+  10 TO 430 : EXECS, ADMINS, MANAGERS
+  
+ 500 TO 950 : MANAGEMENT RELATED
+ 
+1000 TO 1240: MATH, COMPUTER SCIENTISTS
+
+1300 TO 1530: ENGINEERS, ARCHITECTS, SURVEYORS
+
+1540 TO 1560: ENGINEERING, RELATED TECHNICIANS
+
+1600 TO 1760: PHYSICAL SCIENTISTS
+
+1800 TO 1860: SOCIAL SCIENTISTS, RELATED 
+
+1900 TO 1960: LIFE, PHYSICAL, SOCIAL SCIENCE TECH
+
+2000 TO 2060: COUNSELORS, SOCIAL, RELIGIOUS 
+
+2100 TO 2150: LAWYERS, JUDGES, LEGAL SUPPORT 
+
+2200 TO 2340: TEACHERS
+
+2400 TO 2550: EDUCATION, TRAINING, LIBRARY 
+
+2600 TO 2760: ENTERTAINERS, PERFORMERS, SPORTS
+
+2800 TO 2960: MEDIA, COMMUNICATION 
+
+3000 TO 3260: HEALTH DIAGNOSIS AND TREATING
+
+3300 TO 3650: HEALTH CARE TECHNICAL, SUPPORT
+
+3700 TO 3950: PROTECTIVE SERVICE
+
+4000 TO 4160: FOOD PREPARATIONS, SERVING
+
+4200 TO 4250: CLEANING, BUILDING SERVICE
+
+4300 TO 4430: ENTERTAINMENT ATTENDANTS, RELATED 
+
+4500 TO 4650: PERSONAL CARE, SERVICE 
+
+4700 TO 4960: SALES, RELATED 
+
+5000 TO 5930: OFFICE, ADMINISTRATIVE SUPPORT 
+
+6000 TO 6130: FARMING, FISHING, FORESTRY
+
+6200 TO 6940: CONSTRUCTION TRADES, EXTRACTION 
+
+7000 TO 7620: INSTALLATION, MAINTENANCE, REPAIR 
+
+7700 TO 7750: PRODUCTION, OPERATING 
+
+7800 TO 7850: FOOD PREPARATION
+
+7900 TO 8960: SETTER, OPERATORS, TENDERS
+
+9000 TO 9750: TRANSPORTATION, MATERIAL MOVING 
+
+9800 TO 9840: MILITARY SPECIFIC OCCUPATIONS
+
+9950 TO 9990: ACS SPECIAL CODES
+
+
+```{r}
+nlsy[nlsy$occupation == -4, 'occ'] <- "NONE"
+nlsy[nlsy$occupation >= 10 & nlsy$occupation <= 430, 'occ'] <- "EXECS, ADMINS, MANAGERS"
+nlsy[nlsy$occupation >= 500 & nlsy$occupation <= 950, 'occ'] <- "MANAGEMENT RELATED"
+nlsy[nlsy$occupation >= 1000 & nlsy$occupation <= 1240, 'occ'] <- "MATH, COMPUTER SCIENTISTS"
+nlsy[nlsy$occupation >= 1300 & nlsy$occupation <= 1530, 'occ'] <- "ENGINEERS, ARCHITECTS, SURVEYORS"
+nlsy[nlsy$occupation >= 1540 & nlsy$occupation <= 1560, 'occ'] <- "ENGINEERING, RELATED TECHNICIANS"
+nlsy[nlsy$occupation >= 1600 & nlsy$occupation <= 1760, 'occ'] <- "PHYSICAL SCIENTISTS"
+nlsy[nlsy$occupation >= 1800 & nlsy$occupation <= 1860, 'occ'] <- "SOCIAL SCIENTISTS, RELATED "
+nlsy[nlsy$occupation >= 1900 & nlsy$occupation <= 1960, 'occ'] <- "LIFE, PHYSICAL, SOCIAL SCIENCE TECH"
+nlsy[nlsy$occupation >= 2000 & nlsy$occupation <= 2060, 'occ'] <- "COUNSELORS, SOCIAL, RELIGIOUS "
+nlsy[nlsy$occupation >= 2100 & nlsy$occupation <= 2150, 'occ'] <- "LAWYERS, JUDGES, LEGAL SUPPORT "
+nlsy[nlsy$occupation >= 2200 & nlsy$occupation <= 2340, 'occ'] <- "TEACHERS"
+nlsy[nlsy$occupation >= 2400 & nlsy$occupation <= 2550, 'occ'] <- "EDUCATION, TRAINING, LIBRARY "
+nlsy[nlsy$occupation >= 2600 & nlsy$occupation <= 2760, 'occ'] <- "ENTERTAINERS, PERFORMERS, SPORTS"
+nlsy[nlsy$occupation >= 2800 & nlsy$occupation <= 2960, 'occ'] <- "MEDIA, COMMUNICATION "
+nlsy[nlsy$occupation >= 3000 & nlsy$occupation <= 3260, 'occ'] <- "HEALTH DIAGNOSIS AND TREATING"
+nlsy[nlsy$occupation >= 3300 & nlsy$occupation <= 3650, 'occ'] <- "HEALTH CARE TECHNICAL, SUPPORT"
+nlsy[nlsy$occupation >= 3700 & nlsy$occupation <= 3950, 'occ'] <- "PROTECTIVE SERVICE"
+nlsy[nlsy$occupation >= 4000 & nlsy$occupation <= 4160, 'occ'] <- "FOOD PREPARATIONS, SERVING"
+nlsy[nlsy$occupation >= 4200 & nlsy$occupation <= 4250, 'occ'] <- "CLEANING, BUILDING SERVICE"
+nlsy[nlsy$occupation >= 4300 & nlsy$occupation <= 4430, 'occ'] <- "ENTERTAINMENT ATTENDANTS, RELATED "
+nlsy[nlsy$occupation >= 4500 & nlsy$occupation <= 4650, 'occ'] <- "PERSONAL CARE, SERVICE "
+nlsy[nlsy$occupation >= 4700 & nlsy$occupation <= 4960, 'occ'] <- "SALES, RELATED "
+nlsy[nlsy$occupation >= 5000 & nlsy$occupation <= 5930, 'occ'] <- "OFFICE, ADMINISTRATIVE SUPPORT "
+nlsy[nlsy$occupation >= 6000 & nlsy$occupation <= 6130, 'occ'] <- "FARMING, FISHING, FORESTRY"
+nlsy[nlsy$occupation >= 6200 & nlsy$occupation <= 6940, 'occ'] <- "CONSTRUCTION TRADES, EXTRACTION "
+nlsy[nlsy$occupation >= 7000 & nlsy$occupation <= 7620, 'occ'] <- "INSTALLATION, MAINTENANCE, REPAIR "
+nlsy[nlsy$occupation >= 7700 & nlsy$occupation <= 7750, 'occ'] <- "PRODUCTION, OPERATING "
+nlsy[nlsy$occupation >= 7800 & nlsy$occupation <= 7850, 'occ'] <- "FOOD PREPARATION"
+nlsy[nlsy$occupation >= 7900 & nlsy$occupation <= 8960, 'occ'] <- "SETTER, OPERATORS, TENDERS"
+nlsy[nlsy$occupation >= 9000 & nlsy$occupation <= 9750, 'occ'] <- "TRANSPORTATION, MATERIAL MOVING "
+nlsy[nlsy$occupation >= 9800 & nlsy$occupation <= 9840, 'occ'] <- "MILITARY SPECIFIC OCCUPATIONS"
+nlsy[nlsy$occupation >= 9950 & nlsy$occupation <= 9990, 'occ'] <- "ACS SPECIAL CODES"                       
+nlsy[nlsy$occupation < 0, 'occ'] <- NA
+
+num_males <- sum(nlsy$occ == "LIFE, PHYSICAL, SOCIAL SCIENCE TECH" & nlsy$sex == 'Male' & !is.na(nlsy$occ))
+num_females <- sum(nlsy$occ == "LIFE, PHYSICAL, SOCIAL SCIENCE TECH" & nlsy$sex == 'Female' & !is.na(nlsy$occ))
+```
+Before making further changes to the data there were was a category with an extremely large wage gap: "Life, Physical, and Social Science Technicians". I discovered that there were only `r num_males` men in this category and `r num_females` woman. To avoid potentially misleading situations like this, I removed categories that had fewer than 10 men or 10 women and re-classified those respondents as 'OTHER'.
+
+It is clear that women are more likely to work in some occupation categories than others. Also, there is significant gender wage gap variation for some categories (i.e. FOOD PREPARATIONS, SERVING vs. SALES, RELATED) making this a good candidate for linear regression.
+```{r}
+occupations <- c("EXECS, ADMINS, MANAGERS",
+                  "MANAGEMENT RELATED",
+                  "MATH, COMPUTER SCIENTISTS",
+                  "ENGINEERS, ARCHITECTS, SURVEYORS",
+                  "ENGINEERING, RELATED TECHNICIANS",
+                  "PHYSICAL SCIENTISTS",
+                  "SOCIAL SCIENTISTS, RELATED ",
+                  "LIFE, PHYSICAL, SOCIAL SCIENCE TECH",
+                  "COUNSELORS, SOCIAL, RELIGIOUS ",
+                  "LAWYERS, JUDGES, LEGAL SUPPORT ",
+                  "TEACHERS",
+                  "EDUCATION, TRAINING, LIBRARY ",
+                  "ENTERTAINERS, PERFORMERS, SPORTS",
+                  "MEDIA, COMMUNICATION ",
+                  "HEALTH DIAGNOSIS AND TREATING",
+                  "HEALTH CARE TECHNICAL, SUPPORT",
+                  "PROTECTIVE SERVICE",
+                  "FOOD PREPARATIONS, SERVING",
+                  "CLEANING, BUILDING SERVICE",
+                  "ENTERTAINMENT ATTENDANTS, RELATED ",
+                  "PERSONAL CARE, SERVICE ",
+                  "SALES, RELATED ",
+                  "OFFICE, ADMINISTRATIVE SUPPORT ",
+                  "FARMING, FISHING, FORESTRY",
+                  "CONSTRUCTION TRADES, EXTRACTION ",
+                  "INSTALLATION, MAINTENANCE, REPAIR ",
+                  "PRODUCTION, OPERATING ",
+                  "FOOD PREPARATION",
+                  "SETTER, OPERATORS, TENDERS",
+                  "TRANSPORTATION, MATERIAL MOVING ",
+                  "MILITARY SPECIFIC OCCUPATIONS",
+                  "ACS SPECIAL CODES")
+
+
+for (occupation in occupations) {
+num_males <- sum(nlsy$occ == occupation & nlsy$sex == 'Male' & !is.na(nlsy$occ))
+num_females <- sum(nlsy$occ == occupation & nlsy$sex == 'Female' & !is.na(nlsy$occ))  
+  if (num_males < 10 | num_females < 10) {
+    nlsy[nlsy$occ == occupation & !is.na(nlsy$occ), 'occ'] <- "OTHER"
+  }
+}
+```
+
+```{r}
+ggplot(data = nlsy, aes(y = occ, x = stat(count)/sum(stat(count)), fill = sex, alpha = 0.5)) + 
+        geom_histogram(bins = 10, position='identity', stat="count") + guides(alpha = 'none') + 
+        ggtitle("Occupation Distribution by Sex") + scale_x_continuous(labels = scales::percent) + 
+        xlab("Percent") + ylab("Occupation Category")
+```
+
+```{r}
+gap.data <- nlsy %>% group_by(occ) %>%
+           summarize(income.gap = t.test(income ~ sex)$estimate[[2]] - t.test(income ~ sex)$estimate[[1]],
+                     lower = -1 * t.test(income ~ sex)$conf.int[[2]],
+                     upper = -1 * t.test(income ~ sex)$conf.int[[1]])
+
+ggplot(data = gap.data, aes(y = occ, x = income.gap)) + geom_bar(stat = 'identity', fill = 'steel blue') +
+          ggtitle("Gender Wage Gap by Occupation Category") + ylab("Occupation Category") +
+          geom_errorbar(aes(xmax = upper, xmin = lower), width = .1, size = 1)
+```
+
+
+##### Proxy for agreeableness
+There are four variables in the dataset where respondents were asked to express how much they agree or disagree with a given statement. I wanted to see if these questions impacted the effect gender had on income variation because they seem linked to the psychological "Big Five" personality dimension of agreeableness. This dimension is roughly approximate to how conflict-avoidant a person is.
+
+Each statement had `r sum(nlsy$agreeable.1 == -4)` valid skip respondents. This may warrant exclusion in the final analysis. For now I recode all missing values as NA. These are the levels of agreement respondents may choose from. I recode the numbers to the string representation of each response.
+
+0. Strongly Disagree
+1. Disagree
+2. Neither Agree nor Disagree
+3. Agree
+4. Strongly Agree
+
+
+
+```{r}
+nlsy[nlsy$agreeable.1 < 0, 'agreeable.1'] <- NA
+nlsy[nlsy$agreeable.2 < 0, 'agreeable.2'] <- NA
+nlsy[nlsy$agreeable.3 < 0, 'agreeable.3'] <- NA
+nlsy[nlsy$agreeable.4 < 0, 'agreeable.4'] <- NA
+nlsy <- mutate(nlsy, 
+               agreeable.1 = recode_factor(agreeable.1,
+                                      `0` = "Strongly Disagree",
+                                      `1` = "Disagree",
+                                      `2` = "Neither Agree nor Disagree",
+                                      `3` = "Agree",
+                                      `4` = "Strongly Agree"),
+               agreeable.2 = recode_factor(agreeable.2,
+                                      `0` = "Strongly Disagree",
+                                      `1` = "Disagree",
+                                      `2` = "Neither Agree nor Disagree",
+                                      `3` = "Agree",
+                                      `4` = "Strongly Agree"),
+               agreeable.3 = recode_factor(agreeable.3,
+                                      `0` = "Strongly Disagree",
+                                      `1` = "Disagree",
+                                      `2` = "Neither Agree nor Disagree",
+                                      `3` = "Agree",
+                                      `4` = "Strongly Agree"),
+               agreeable.4 = recode_factor(agreeable.4,
+                                      `0` = "Strongly Disagree",
+                                      `1` = "Disagree",
+                                      `2` = "Neither Agree nor Disagree",
+                                      `3` = "Agree",
+                                      `4` = "Strongly Agree"))
+
+```
+
+```{r}
+#table(nlsy$agreeable.1, nlsy$sex)
+#table(nlsy$agreeable.2, nlsy$sex)
+#table(nlsy$agreeable.3, nlsy$sex)
+#table(nlsy$agreeable.4, nlsy$sex)
+```
+
+Looking at the distribution of responses, only the second and fourth statements had at least 10 respondents of each gender in every category, so I limit my analysis to these two variables. For each of these statements I expect agreeable people to disagree more often (using the rough approximation that compassion and agreeableness are the same). Based on my limited understanding of psychology, my hypothesis is that women are more agreeable than men.
+
+Statement 2:
+
+"Those in need have to learn to take care of themselves and not depend on others."
+
+Statement 4:
+
+"These days people need to look after themselves and not overly worry about others."
+
+As we can see in the following graphs, men are more likely to "Strongly Agree" with these statements.
+
+```{r}
+ggplot(data = nlsy[!is.na(nlsy$agreeable.2),], aes(y = agreeable.2, x = stat(count)/sum(stat(count)), fill = sex, alpha = 0.5)) + 
+        geom_histogram(bins = 10, position='identity', stat="count") + guides(alpha = 'none') + ggtitle("Distribution of agreeable.2 by Sex") + scale_x_continuous(labels = scales::percent) + xlab("Percent")
+```
+```{r}
+ggplot(data = nlsy[!is.na(nlsy$agreeable.4),], aes(y = agreeable.4, x = stat(count)/sum(stat(count)), fill = sex, alpha = 0.5)) + 
+        geom_histogram(bins = 10, position='identity', stat="count") + guides(alpha = 'none') + ggtitle("Distribution of agreeable.4 by Sex") + scale_x_continuous(labels = scales::percent) + xlab("Percent")
+```
+Now, let's look at the wage gap across each variable. Instead of providing evidence that 'disagreeableness' lessens the gender wage gap, these seem to suggest that it has no effect on the gender wage gap or perhaps even the opposite effect. Additionally, all of the error bars overlap. We will see more clearly what effect the variables have in the final analysis with linear regression.
+
+```{r}
+gap.data <- nlsy[!is.na(nlsy$agreeable.2),] %>% group_by(agreeable.2) %>%
+           summarize(income.gap = t.test(income ~ sex)$estimate[[2]] - t.test(income ~ sex)$estimate[[1]],
+                     lower = -1 * t.test(income ~ sex)$conf.int[[2]],
+                     upper = -1 * t.test(income ~ sex)$conf.int[[1]])
+
+ggplot(data = gap.data, aes(x = agreeable.2, y = income.gap)) + geom_bar(stat = 'identity', fill = 'steel blue') +
+          ggtitle("Gender Income Gap by agreeable.2") +
+          geom_errorbar(aes(ymax = upper, ymin = lower), width = .1, size = 1)
+```
+
+```{r}
+gap.data <- nlsy[!is.na(nlsy$agreeable.4),] %>% group_by(agreeable.4) %>%
+           summarize(income.gap = t.test(income ~ sex)$estimate[[2]] - t.test(income ~ sex)$estimate[[1]],
+                     lower = -1 * t.test(income ~ sex)$conf.int[[2]],
+                     upper = -1 * t.test(income ~ sex)$conf.int[[1]])
+
+ggplot(data = gap.data, aes(x = agreeable.4, y = income.gap)) + geom_bar(stat = 'identity', fill = 'steel blue') +
+          ggtitle("Gender Income Gap by agreeable.4") +
+          geom_errorbar(aes(ymax = upper, ymin = lower), width = .1, size = 1)
+```
+
+## Findings
+```{r}
+nlsy.lm <- lm(income ~ sex + 
+                       bio.children.2007 + 
+                       HH.net.worth.1997 +
+                       bio.mom.degree +
+                       height +
+                       math.SAT +
+                       highest.degree +
+                       parents +
+                       marriage.status +
+                       occ,
+                       data = nlsy)
+
+nlsy.lm.a <- update(nlsy.lm, . ~ . + agreeable.2)
+nlsy.lm.g <- update(nlsy.lm, . ~ . + GPA)
+```
+
+Now for the linear regression analysis. At this point there are `r nrow(nlsy)` observations in the data set. After running a linear regression including the previously discussed variables, the proxy for agreeableness has no statistically significant categories and requires the omission of `r sum(is.na(nlsy$agreeable.2))` observations. The GPA variable is statistically significant, but it requires the omission of `r sum(is.na(nlsy$GPA))` observations. Each variable caused a reduction in adjusted R-squared from `r summary(nlsy.lm)$adj.r.squared` to `r summary(nlsy.lm.a)$adj.r.squared` for the agreeableness variable and to `r summary(nlsy.lm.g)$adj.r.squared` for GPA. This persuaded me to remove these variables. Only 2839 observations are deleted due to missingness in the resulting model.
+
+
+```{r}
+nlsy["any.children.2007"] <- nlsy$bio.children.2007 != 0
+nlsy.lm.interact.1 <- update(nlsy.lm, . ~ . + bio.children.2007 * sex)
+nlsy.lm.interact.2 <- update(nlsy.lm, . ~ . + bio.mom.degree * sex)
+nlsy.lm.interact.3 <- update(nlsy.lm, . ~ . + marriage.status * sex)
+nlsy.lm.interact.4 <- update(nlsy.lm, . ~ . + HH.net.worth.1997 * sex)
+
+nlsy.lm.sex <- summary(lm(income ~ sex, data = nlsy))
+```
+I wanted to test if the following variables had interactive effects with gender. I updated the model with each interactive variable (i.e. bio.children.2007 * sex) and ran an ANOVA test. The third variable, marriage.status had a significant P-value for the ANOVA test, suggesting it added predictive power to the model, so I include it as an interaction term in the final model. 
+
+- bio.children.2007 (`r anova(nlsy.lm, nlsy.lm.interact.1)$'Pr(>F)'[2]`)
+- bio.mom.degree (`r anova(nlsy.lm, nlsy.lm.interact.2)$'Pr(>F)'[2]`)
+- marriage.status (`r anova(nlsy.lm, nlsy.lm.interact.3)$'Pr(>F)'[2]`)
+- HH.net.worth.1997 (`r anova(nlsy.lm, nlsy.lm.interact.4)$'Pr(>F)'[2]`)
+
+Regressing income on only gender gives the following results. The adjusted R-squared is `r nlsy.lm.sex$adj.r.squared` and the estimated effect of gender on income is `r nlsy.lm.sex$coefficients['sexMale', 'Estimate']` which matches the results of the t-test we ran at the beginning of our analysis.
+
+```{r}
+nlsy.lm.sex
+```
+Our final model improves on this simple approach by increasing the adjusted R-squared to `r summary(nlsy.lm.interact.3)$adj.r.squared`. The new estimate for the effect of gender on income is `r summary(nlsy.lm.interact.3)$coefficients['sexMale', 'Estimate']`. That estimate means, all other model variables held equal, men are predicted to earn `r summary(nlsy.lm.interact.3)$coefficients['sexMale', 'Estimate']` more than women. It is still significant at the 0.01 level.
+
+Other statistically significant variables include: 
+
+- 1997 household net worth
+- The highest category of math SAT scores
+- All but one category of the highest.degree variable
+- The category of living with mom and a step-parent
+- Many of the occupation categories
+- The male and married interaction
+
+Most of the interpretations are straightforward. Interpreting categorical variable coefficients follows the pattern established for gender. Numeric variables have a different interpretation. Take as an example 1997 household net worth. Its coefficient means, all else held equal, an increase of \$100,000 in the HH.net.worth.1997 variable results in a predicted increase in respondent income of  \$`r 100000 * summary(nlsy.lm.interact.3)$coefficients['HH.net.worth.1997', 'Estimate']`.
+
+For the interaction between Male and marriage status, the interpretation is as follows: all else held equal, married men are predicted to earn \$`r summary(nlsy.lm.interact.3)$coefficients['sexMale', 'Estimate']`(for being Male) + \$`r summary(nlsy.lm.interact.3)$coefficients['sexMale:marriage.statusMarried', 'Estimate']`(for being male and married) = \$`r summary(nlsy.lm.interact.3)$coefficients['sexMale', 'Estimate'] + summary(nlsy.lm.interact.3)$coefficients['sexMale:marriage.statusMarried', 'Estimate']` more than married women.
+```{r}
+summary(nlsy.lm.interact.3)
+```
+
+The following plots show potential issues with the linear regression. 
+
+The first plot shows close to linear relationship between fitted values and residuals. I am not concerned by its output.
+
+The second is a Q-Q plot which shows that many of the residuals follow a normal distribution, but larger residuals are much larger than would be expected from a normal distribution. This is likely due to the extremely high wages of the top 2% of earners. This suggests removing those earners may improve the reliability of the model.  
+
+The third, Scale-Location plot shows a positive relationship which is worrisome. Perhaps removing high earners may correct this as well.
+
+The final plot shows no outliers have undue influence on the model.
+
+```{r}
+plot(nlsy.lm.interact.3)
+```
+```{r}
+no.top.code <- nlsy[nlsy$income != max(nlsy$income),]
+nlsy.lm.low <- lm(income ~ sex + 
+                       bio.children.2007 + 
+                       HH.net.worth.1997 +
+                       bio.mom.degree +
+                       height +
+                       math.SAT +
+                       highest.degree +
+                       parents +
+                       marriage.status +
+                       occ +
+                       marriage.status * sex,
+                       data = no.top.code)
+```
+
+As can be seen in the following plots, removing the top 2% of earners improves the normality of residuals and the linear relationship between residuals and fitted values. After this model change, the highest category of Math-SAT scorers is no longer statistically significant, but all other previously significant variables remain significant. Notably, the estimate for the gender income gap reduces from \$`r summary(nlsy.lm.interact.3)$coefficients['sexMale', 'Estimate']` to \$`r summary(nlsy.lm.low)$coefficients['sexMale', 'Estimate']`. But, `r 100 * sum(nlsy$sex == 'Male' & nlsy$income == max(nlsy$income)) / sum(nlsy$income == max(nlsy$income))`% of the top 2% of earners are male, so removing those earners will necessarily bias downward the gender income gap. So, despite issues presented by previous plots, I conclude using the results of the model that includes the top 2% of earners.
+```{r}
+plot(nlsy.lm.low)
+```
+
+## Discussion
+After controlling for multiple variables, the effect of gender on income declined from \$`r nlsy.lm.sex$coefficients['sexMale', 'Estimate']` to \$`r summary(nlsy.lm.interact.3)$coefficients['sexMale', 'Estimate']`. This suggests that there was omitted variable bias. The persistence of the positive effect of gender is evidence of gender discrimination in the workplace. I attempted to explain the variation by using height, occupation choice, agreeableness, and desire to stay home with children. Occupation choice had a significant impact in the model and height did not. Married men were estimated to make more than married women which may be evidence for women being more likely to stay home with children. The question I used as a proxy for agreeableness did not have a statistically significant impact and I eventually omitted it from the analysis because it had a large number of missing values.
+
+For future analysis I recommend finding a better proxy for the psychological dimension of agreeableness. An in-depth analysis of the big 5 psychological dimensions may be beneficial as well.
+
+I included the incomes of those who did not work in my analysis. My model in part is attempting to predict who chooses not to work (income of 0), and in part predicting each individual's income. It may be more reasonable to fit two models to answer the two questions. A better analysis would use number of years worked as a predictor and then compare only the incomes of working individuals. That variable, however, was not included in the data set.
+
+I'm convinced there is more to the story behind the gap in average income for men and women because of my analysis, but I do not believe that the final effect I found is the accurate estimate of the income loss women experience due to discrimination. Variables that better measure work experience and psychological differences may be needed to find a more accurate estimate.
+
+
+
+
+
+
+
